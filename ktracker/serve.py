@@ -22,10 +22,12 @@ from tornado.autoreload import add_reload_hook
 ioloop = tornado.ioloop.IOLoop()
 ioloop.install()
 
-from handlers import Handler
+from handlers import Handler, AnnounceHandler, DebugHandler
 
 routes = [ 
-    ('.?', Handler) 
+    ('/announce/?', AnnounceHandler),
+    ('.?', Handler),
+    ('/status/?',DebugHandler)
     ]
 
 application = tornado.web.Application(routes, **settings)
