@@ -88,10 +88,14 @@ class BaseHandler(tornado.web.RequestHandler):
     def writeout(self, data):
         if 'callback' in self.request.arguments:
             self.write(self.get_argument('callback'))
+            self.set_header('Content-Type', 'application/javascript')
             self.write('("')
-            #self.write(base64.b64encode(bencode.bencode(data)))
-            self.set_header('Content-Type', 'application/x-bittorrent; charset=ISO-8859-1')
-            self.write(bencode.bencode(data))
+            #self.write(base64.b64encode(bencode.bencode(data))) #
+            #self.set_header('Content-Type', 'application/javascript; charset=ISO-8859-1')
+
+            #can we really just write out the data without base64 encoding it? json not binary safe...
+            #self.write(bencode.bencode(data))
+            self.write(base64.b64encode(bencode.bencode(data)))
             self.write('")')
         else:
             self.write(bencode.bencode(data))
@@ -127,18 +131,31 @@ class AnnounceHandler(BaseHandler):
             response = tracker.handle_announce( args )
             self.writeout(response)
 
-class Handler(tornado.web.RequestHandler):
+import urlparse
+from udptracker import UDPTracker
+class Handler(BaseHandler):
     @gen.engine
     @tornado.web.asynchronous
     def get(self):
         if '_tracker_url' in self.request.arguments:
             tracker_url = self.get_argument('_tracker_url')
-            response = yield gen.Task( httpclient.fetch, '%s%s' % (tracker_url, self.request.uri ) )
-            if response.code == 200:
-                self.write(self.get_argument('callback'))
-                self.write('("')
-                self.write(base64.b64encode(response.body))
-                self.write('")')
+            parsed = urlparse.urlparse(tracker_url)
+            if parsed.scheme == 'udp':
+                # TODO - udp tracker support
+                udptracker = UDPTracker(tracker_url, self.request)
+                udptracker.get_connection()
+                peers = udptracker.announce()
+                d = {}
+                d['peers'] = ''.join( encode_peer(peer[0], peer[1]) for peer in peers )
+                self.writeout(d)
+
+            else:
+                response = yield gen.Task( httpclient.fetch, '%s%s' % (tracker_url, self.request.uri ) )
+                if response.code == 200:
+                    self.write(self.get_argument('callback'))
+                    self.write('("')
+                    self.write(base64.b64encode(response.body)) # maybe don't have to b64 encode because ip address responses may not include null bytes??? compact representation... how often do IP's include zeros?
+                    self.write('")')
         self.finish()
 
 class DebugHandler(BaseHandler):

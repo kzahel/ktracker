@@ -26,7 +26,7 @@ from handlers import Handler, AnnounceHandler, DebugHandler
 
 routes = [ 
     ('/announce/?', AnnounceHandler),
-    ('.?', Handler),
+    ('/proxy/?', Handler),
     ('/status/?',DebugHandler)
     ]
 
