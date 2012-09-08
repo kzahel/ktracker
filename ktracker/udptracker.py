@@ -9,8 +9,10 @@ uint32_max = 2**32
 class UDPTracker(object):
     def send_and_wait(self, msg):
         self.clisocket.sendto(msg, (self.host, self.port))
-        logging.info('receiving...')
-        res = self.clisocket.recv(1024)
+        logging.info('sending to udp tracker...')
+        #res = self.clisocket.recv(1024)
+        #res = self.clisocket.recv(20 + 6 * 150)
+        res = self.clisocket.recv(4096)
         logging.info('udp tracker response %s of len %s' % ([res], len(res)))
         return res
 
@@ -42,9 +44,15 @@ class UDPTracker(object):
         self.port = int(self.port)
         self.request = request
         self.clisocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.clisocket.settimeout(4)
 
-        self.info_hash = request.arguments['info_hash'][0]
-        self.peer_id = request.arguments['peer_id'][0]
+        args = urlparse.parse_qs( str(self.parsed.path.split('?')[1]) )
+
+        self.info_hash = args
+        self.info_hash = args['info_hash'][0]
+        self.peer_id = args['peer_id'][0]
+        #self.info_hash = request.arguments['info_hash'][0]
+        #self.peer_id = request.arguments['peer_id'][0]
 
         #self.get_connection()
         #self.announce()
@@ -93,12 +101,14 @@ class UDPTracker(object):
 
         remainder_len = len(res) - 20
 
-        assert remainder_len % 6 == 0
+        if remainder_len % 6 != 0:
+            logging.error('response not divisible by 6...')
+        #assert remainder_len % 6 == 0
 
         peers = []
 
         numpeers = remainder_len/6
-        assert numpeers == seeders+leechers
+        #assert numpeers == seeders+leechers
         for i in range(numpeers):
             peerdata = res[20 + i*6 : 20 + (i+1)*6]
             host, port = struct.unpack('>4sH', peerdata)

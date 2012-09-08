@@ -150,7 +150,7 @@ class Handler(BaseHandler):
                 self.writeout(d)
 
             else:
-                response = yield gen.Task( httpclient.fetch, '%s%s' % (tracker_url, self.request.uri ) )
+                response = yield gen.Task( httpclient.fetch, tracker_url )
                 if response.code == 200:
                     self.write(self.get_argument('callback'))
                     self.write('("')
