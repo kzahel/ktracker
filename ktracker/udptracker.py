@@ -92,8 +92,6 @@ class UDPTracker(object):
         assert len(res) > 20
         response = struct.unpack(">IIIII", res[:20])
 
-
-        
         raction, rtid, interval, leechers, seeders = response
         assert raction == action
         assert rtid == tid

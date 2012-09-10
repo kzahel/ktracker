@@ -144,11 +144,10 @@ class Handler(BaseHandler):
                 # TODO - udp tracker support
                 udptracker = UDPTracker(tracker_url, self.request)
                 udptracker.get_connection()
-                peers = udptracker.announce()
+                peers = udptracker.announce() # should also get other response info...
                 d = {}
                 d['peers'] = ''.join( encode_peer(peer[0], peer[1]) for peer in peers )
                 self.writeout(d)
-
             else:
                 response = yield gen.Task( httpclient.fetch, tracker_url )
                 if response.code == 200:
@@ -156,6 +155,15 @@ class Handler(BaseHandler):
                     self.write('("')
                     self.write(base64.b64encode(response.body)) # maybe don't have to b64 encode because ip address responses may not include null bytes??? compact representation... how often do IP's include zeros?
                     self.write('")')
+                else:
+                    logging.error('tracker response %s' % response)
+                    self.write(self.get_argument('callback'))
+                    self.write('("')
+                    error = bencode.bencode({'error_code':response.code})
+                    self.write(base64.b64encode(error))
+                    self.write('")')
+        else:
+            logging.error('no _tracker_url specified')
         self.finish()
 
 class DebugHandler(BaseHandler):
