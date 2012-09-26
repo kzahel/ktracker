@@ -40,17 +40,22 @@ class UDPTracker(object):
 
     def __init__(self, tracker_url, request):
         self.parsed = urlparse.urlparse(tracker_url)
+        if request.method == 'POST':
+            args = request.arguments
+        else:
+            args = urlparse.parse_qs( str(self.parsed.path.split('?')[1]) )
+
         self.host,self.port = self.parsed.netloc.split(':')
         self.port = int(self.port)
         self.request = request
         self.clisocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.clisocket.settimeout(4)
 
-        args = urlparse.parse_qs( str(self.parsed.path.split('?')[1]) )
 
         self.info_hash = args
         self.info_hash = args['info_hash'][0]
         self.peer_id = args['peer_id'][0]
+
         #self.info_hash = request.arguments['info_hash'][0]
         #self.peer_id = request.arguments['peer_id'][0]
 

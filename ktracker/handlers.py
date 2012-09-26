@@ -85,7 +85,15 @@ class BaseHandler(tornado.web.RequestHandler):
                  'uploaded':'int',
                  'left':'int'}
 
+    def setheaders(self):
+        self.set_header('Access-Control-Allow-Origin','*')
+        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, PUT, DELETE')
+        self.set_header('Access-Control-Allow-Headers', 'Content-Type, Accept')
+        
+
     def writeout(self, data):
+        self.setheaders()
+        self.set_header('Content-Type', 'text/html; charset=ISO-8859-1')
         if 'callback' in self.request.arguments:
             self.write(self.get_argument('callback'))
             self.set_header('Content-Type', 'application/javascript')
@@ -122,6 +130,8 @@ class BaseHandler(tornado.web.RequestHandler):
 
 class AnnounceHandler(BaseHandler):
     def get(self):
+        return
+        self.setheaders()
         logging.info('got announce %s,%s' % (self.request.headers, self.request.arguments))
         if 'info_hash' in self.request.arguments:
             args = self.get_args()
@@ -136,7 +146,12 @@ from udptracker import UDPTracker
 class Handler(BaseHandler):
     @gen.engine
     @tornado.web.asynchronous
+    def post(self):
+        self.get()
+    @gen.engine
+    @tornado.web.asynchronous
     def get(self):
+        self.setheaders()
         if '_tracker_url' in self.request.arguments:
             tracker_url = self.get_argument('_tracker_url')
             parsed = urlparse.urlparse(tracker_url)
@@ -150,18 +165,30 @@ class Handler(BaseHandler):
                 self.writeout(d)
             else:
                 response = yield gen.Task( httpclient.fetch, tracker_url )
+
                 if response.code == 200:
-                    self.write(self.get_argument('callback'))
-                    self.write('("')
-                    self.write(base64.b64encode(response.body)) # maybe don't have to b64 encode because ip address responses may not include null bytes??? compact representation... how often do IP's include zeros?
-                    self.write('")')
+                    if True:
+                        self.set_header('Content-Type', 'text/html; charset=ISO-8859-1')
+                        self.write(response.body)
+                        self.finish()
+                        return
+                    else:
+                        self.write(self.get_argument('callback'))
+                        self.write('("')
+                        self.write(base64.b64encode(response.body)) # maybe don't have to b64 encode because ip address responses may not include null bytes??? compact representation... how often do IP's include zeros?
+                        self.write('")')
                 else:
-                    logging.error('tracker response %s' % response)
-                    self.write(self.get_argument('callback'))
-                    self.write('("')
-                    error = bencode.bencode({'error_code':response.code})
-                    self.write(base64.b64encode(error))
-                    self.write('")')
+                    if True:
+                        self.set_status(response.code)
+                        self.write(response.body)
+                        #self.write({'error_code':response.code})
+                    else:
+                        logging.error('tracker response %s' % response)
+                        self.write(self.get_argument('callback'))
+                        self.write('("')
+                        error = bencode.bencode({'error_code':response.code})
+                        self.write(base64.b64encode(error))
+                        self.write('")')
         else:
             logging.error('no _tracker_url specified')
         self.finish()
