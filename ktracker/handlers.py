@@ -146,10 +146,6 @@ from udptracker import UDPTracker
 class Handler(BaseHandler):
     @gen.engine
     @tornado.web.asynchronous
-    def post(self):
-        self.get()
-    @gen.engine
-    @tornado.web.asynchronous
     def get(self):
         self.setheaders()
         if '_tracker_url' in self.request.arguments:
@@ -158,8 +154,8 @@ class Handler(BaseHandler):
             if parsed.scheme == 'udp':
                 # TODO - udp tracker support
                 udptracker = UDPTracker(tracker_url, self.request)
-                udptracker.get_connection()
-                peers = udptracker.announce() # should also get other response info...
+                yield gen.Task(udptracker.get_connection )
+                peers = yield gen.Task( udptracker.announce ) # should also get other response info...
                 d = {}
                 d['peers'] = ''.join( encode_peer(peer[0], peer[1]) for peer in peers )
                 self.writeout(d)
